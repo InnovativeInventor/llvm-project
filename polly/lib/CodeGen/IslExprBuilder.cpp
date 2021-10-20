@@ -343,8 +343,8 @@ IslExprBuilder::createAccessAddress(isl_ast_expr *Expr) {
   return {Access, SAI->getElementType()};
 }
 
-Value *IslExprBuilder::createOpAccess(isl_ast_expr *Expr) {
-  auto Info = createAccessAddress(Expr);
+Value *IslExprBuilder::createOpAccess(isl::ast_expr Expr) {
+  auto Info = createAccessAddress(Expr.get());
   assert(Info.first && "Could not create op access address");
   return Builder.CreateLoad(Info.second, Info.first,
                             Info.first->getName() + ".load");
@@ -651,7 +651,7 @@ IslExprBuilder::createOpBooleanConditional(__isl_take isl_ast_expr *Expr) {
 }
 
 Value *IslExprBuilder::createOp(isl::ast_expr Expr) {
-  assert(isl_ast_expr_get_type(Expr.get()) == isl_ast_expr_op &&
+  assert(Expr.isa<isl::ast_expr_op>() &&
          "Expression not of type isl_ast_expr_op");
   switch (isl_ast_expr_get_op_type(Expr.get())) {
   case isl_ast_op_error:
@@ -660,7 +660,7 @@ Value *IslExprBuilder::createOp(isl::ast_expr Expr) {
   case isl_ast_op_member:
     llvm_unreachable("Unsupported isl ast expression");
   case isl_ast_op_access:
-    return createOpAccess(Expr.get());
+    return createOpAccess(Expr);
   case isl_ast_op_max:
   case isl_ast_op_min:
     return createOpNAry(Expr.get());
