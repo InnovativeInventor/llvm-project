@@ -209,7 +209,7 @@ private:
   llvm::LoopInfo &LI;
   llvm::BasicBlock *StartBlock;
 
-  llvm::Value *createOp(__isl_take isl_ast_expr *Expr);
+  llvm::Value *createOp(isl::ast_expr Expr);
   llvm::Value *createOpUnary(__isl_take isl_ast_expr *Expr);
   llvm::Value *createOpAccess(__isl_take isl_ast_expr *Expr);
   llvm::Value *createOpBin(__isl_take isl_ast_expr *Expr);

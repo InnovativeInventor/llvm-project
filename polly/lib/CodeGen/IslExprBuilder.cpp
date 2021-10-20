@@ -650,20 +650,20 @@ IslExprBuilder::createOpBooleanConditional(__isl_take isl_ast_expr *Expr) {
   return PHI;
 }
 
-Value *IslExprBuilder::createOp(__isl_take isl_ast_expr *Expr) {
-  assert(isl_ast_expr_get_type(Expr) == isl_ast_expr_op &&
+Value *IslExprBuilder::createOp(isl::ast_expr Expr) {
+  assert(isl_ast_expr_get_type(Expr.get()) == isl_ast_expr_op &&
          "Expression not of type isl_ast_expr_op");
-  switch (isl_ast_expr_get_op_type(Expr)) {
+  switch (isl_ast_expr_get_op_type(Expr.get())) {
   case isl_ast_op_error:
   case isl_ast_op_cond:
   case isl_ast_op_call:
   case isl_ast_op_member:
     llvm_unreachable("Unsupported isl ast expression");
   case isl_ast_op_access:
-    return createOpAccess(Expr);
+    return createOpAccess(Expr.get());
   case isl_ast_op_max:
   case isl_ast_op_min:
-    return createOpNAry(Expr);
+    return createOpNAry(Expr.get());
   case isl_ast_op_add:
   case isl_ast_op_sub:
   case isl_ast_op_mul:
@@ -672,25 +672,25 @@ Value *IslExprBuilder::createOp(__isl_take isl_ast_expr *Expr) {
   case isl_ast_op_pdiv_q: // Dividend is non-negative
   case isl_ast_op_pdiv_r: // Dividend is non-negative
   case isl_ast_op_zdiv_r: // Result only compared against zero
-    return createOpBin(Expr);
+    return createOpBin(Expr.get());
   case isl_ast_op_minus:
-    return createOpUnary(Expr);
+    return createOpUnary(Expr.get());
   case isl_ast_op_select:
-    return createOpSelect(Expr);
+    return createOpSelect(Expr.get());
   case isl_ast_op_and:
   case isl_ast_op_or:
-    return createOpBoolean(Expr);
+    return createOpBoolean(Expr.get());
   case isl_ast_op_and_then:
   case isl_ast_op_or_else:
-    return createOpBooleanConditional(Expr);
+    return createOpBooleanConditional(Expr.get());
   case isl_ast_op_eq:
   case isl_ast_op_le:
   case isl_ast_op_lt:
   case isl_ast_op_ge:
   case isl_ast_op_gt:
-    return createOpICmp(Expr);
+    return createOpICmp(Expr.get());
   case isl_ast_op_address_of:
-    return createOpAddressOf(Expr);
+    return createOpAddressOf(Expr.get());
   }
 
   llvm_unreachable("Unsupported isl_ast_expr_op kind.");
@@ -777,7 +777,7 @@ Value *IslExprBuilder::create(__isl_take isl_ast_expr *Expr) {
   case isl_ast_expr_error:
     llvm_unreachable("Code generation error");
   case isl_ast_expr_op:
-    return createOp(Expr);
+    return createOp(isl::manage_copy(Expr));
   case isl_ast_expr_id:
     return createId(Expr);
   case isl_ast_expr_int:
