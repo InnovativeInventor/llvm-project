@@ -408,7 +408,7 @@ void IslNodeBuilder::createUserVector(__isl_take isl_ast_node *User,
   isl_map *S = isl_map_from_union_map(Schedule);
 
   auto *NewAccesses = createNewAccesses(Stmt, User);
-  createSubstitutionsVector(Expr, Stmt, VLTS, IVS, IteratorID);
+  createSubstitutionsVector(isl::manage(Expr), Stmt, VLTS, IVS, IteratorID);
   VectorBlockGenerator::generate(BlockGen, *Stmt, VLTS, S, NewAccesses);
   isl_id_to_ast_expr_free(NewAccesses);
   isl_map_free(S);
@@ -929,35 +929,32 @@ IslNodeBuilder::createNewAccesses(ScopStmt *Stmt,
 
 void IslNodeBuilder::createSubstitutions(isl::ast_expr Expr, ScopStmt *Stmt,
                                          LoopToScevMapT &LTS) {
-  assert(isl_ast_expr_get_type(Expr.get()) == isl_ast_expr_op &&
-         "Expression of type 'op' expected");
-  assert(isl_ast_expr_get_op_type(Expr.get()) == isl_ast_op_call &&
-         "Operation of type 'call' expected");
-  for (int i = 0; i < isl_ast_expr_get_op_n_arg(Expr.get()) - 1; ++i) {
+  isl::ast_expr_op ExprOpCall =
+      Expr.as<isl::ast_expr_op>().as<isl::ast_expr_op_call>();
+
+  for (int i = 0; i < isl_ast_expr_get_op_n_arg(ExprOpCall.get()) - 1; ++i) {
     Value *V;
 
-    V = ExprBuilder.create(isl_ast_expr_copy(Expr.op_arg(i + 1).get()));
+    V = ExprBuilder.create(ExprOpCall.op_arg(i + 1).release());
     ScalarEvolution *SE = Stmt->getParent()->getSE();
     LTS[Stmt->getLoopForDimension(i)] = SE->getUnknown(V);
   }
 }
 
 void IslNodeBuilder::createSubstitutionsVector(
-    __isl_take isl_ast_expr *Expr, ScopStmt *Stmt,
-    std::vector<LoopToScevMapT> &VLTS, std::vector<Value *> &IVS,
-    __isl_take isl_id *IteratorID) {
+    isl::ast_expr Expr, ScopStmt *Stmt, std::vector<LoopToScevMapT> &VLTS,
+    std::vector<Value *> &IVS, __isl_take isl_id *IteratorID) {
   int i = 0;
 
   Value *OldValue = IDToValue[IteratorID];
   for (Value *IV : IVS) {
     IDToValue[IteratorID] = IV;
-    createSubstitutions(isl::manage_copy(Expr), Stmt, VLTS[i]);
+    createSubstitutions(Expr, Stmt, VLTS[i]);
     i++;
   }
 
   IDToValue[IteratorID] = OldValue;
   isl_id_free(IteratorID);
-  isl_ast_expr_free(Expr);
 }
 
 void IslNodeBuilder::generateCopyStmt(

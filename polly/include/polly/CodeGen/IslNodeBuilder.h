@@ -370,7 +370,7 @@ protected:
   ///             induction variables, is added to the LTS map.
   void createSubstitutions(isl::ast_expr Expr, ScopStmt *Stmt,
                            LoopToScevMapT &LTS);
-  void createSubstitutionsVector(__isl_take isl_ast_expr *Expr, ScopStmt *Stmt,
+  void createSubstitutionsVector(isl::ast_expr Expr, ScopStmt *Stmt,
                                  std::vector<LoopToScevMapT> &VLTS,
                                  std::vector<Value *> &IVS,
                                  __isl_take isl_id *IteratorID);
