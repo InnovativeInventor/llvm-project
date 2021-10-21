@@ -927,23 +927,19 @@ IslNodeBuilder::createNewAccesses(ScopStmt *Stmt,
   return NewAccesses.release();
 }
 
-void IslNodeBuilder::createSubstitutions(__isl_take isl_ast_expr *Expr,
-                                         ScopStmt *Stmt, LoopToScevMapT &LTS) {
-  assert(isl_ast_expr_get_type(Expr) == isl_ast_expr_op &&
+void IslNodeBuilder::createSubstitutions(isl::ast_expr Expr, ScopStmt *Stmt,
+                                         LoopToScevMapT &LTS) {
+  assert(isl_ast_expr_get_type(Expr.get()) == isl_ast_expr_op &&
          "Expression of type 'op' expected");
-  assert(isl_ast_expr_get_op_type(Expr) == isl_ast_op_call &&
+  assert(isl_ast_expr_get_op_type(Expr.get()) == isl_ast_op_call &&
          "Operation of type 'call' expected");
-  for (int i = 0; i < isl_ast_expr_get_op_n_arg(Expr) - 1; ++i) {
-    isl_ast_expr *SubExpr;
+  for (int i = 0; i < isl_ast_expr_get_op_n_arg(Expr.get()) - 1; ++i) {
     Value *V;
 
-    SubExpr = isl_ast_expr_get_op_arg(Expr, i + 1);
-    V = ExprBuilder.create(SubExpr);
+    V = ExprBuilder.create(isl_ast_expr_copy(Expr.op_arg(i + 1).get()));
     ScalarEvolution *SE = Stmt->getParent()->getSE();
     LTS[Stmt->getLoopForDimension(i)] = SE->getUnknown(V);
   }
-
-  isl_ast_expr_free(Expr);
 }
 
 void IslNodeBuilder::createSubstitutionsVector(
@@ -955,7 +951,7 @@ void IslNodeBuilder::createSubstitutionsVector(
   Value *OldValue = IDToValue[IteratorID];
   for (Value *IV : IVS) {
     IDToValue[IteratorID] = IV;
-    createSubstitutions(isl_ast_expr_copy(Expr), Stmt, VLTS[i]);
+    createSubstitutions(isl::manage_copy(Expr), Stmt, VLTS[i]);
     i++;
   }
 
@@ -1011,7 +1007,7 @@ void IslNodeBuilder::createUser(__isl_take isl_ast_node *User) {
     generateCopyStmt(Stmt, NewAccesses);
     isl_ast_expr_free(Expr);
   } else {
-    createSubstitutions(Expr, Stmt, LTS);
+    createSubstitutions(isl::manage(Expr), Stmt, LTS);
 
     if (Stmt->isBlockStmt())
       BlockGen.copyStmt(*Stmt, LTS, NewAccesses);

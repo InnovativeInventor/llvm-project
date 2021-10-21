@@ -368,7 +368,7 @@ protected:
   ///             that counts the number of times a loop is executed. For each
   ///             original loop this count, expressed in function of the new
   ///             induction variables, is added to the LTS map.
-  void createSubstitutions(__isl_take isl_ast_expr *Expr, ScopStmt *Stmt,
+  void createSubstitutions(isl::ast_expr Expr, ScopStmt *Stmt,
                            LoopToScevMapT &LTS);
   void createSubstitutionsVector(__isl_take isl_ast_expr *Expr, ScopStmt *Stmt,
                                  std::vector<LoopToScevMapT> &VLTS,
