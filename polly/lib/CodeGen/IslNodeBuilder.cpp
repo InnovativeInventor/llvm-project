@@ -984,25 +984,20 @@ Value *IslNodeBuilder::materializeNonScopLoopInductionVariable(const Loop *L) {
   return V;
 }
 
-void IslNodeBuilder::createUser(__isl_take isl_ast_node *User) {
+void IslNodeBuilder::createUser(isl::ast_node_user User) {
   LoopToScevMapT LTS;
-  isl_id *Id;
-  ScopStmt *Stmt;
 
-  isl_ast_expr *Expr = isl_ast_node_user_get_expr(User);
-  isl_ast_expr *StmtExpr = isl_ast_expr_get_op_arg(Expr, 0);
-  Id = isl_ast_expr_get_id(StmtExpr);
-  isl_ast_expr_free(StmtExpr);
+  isl::ast_expr Expr = User.expr();
+  isl::ast_expr StmtExpr = Expr.op_arg(0);
 
   LTS.insert(OutsideLoopIterations.begin(), OutsideLoopIterations.end());
 
-  Stmt = (ScopStmt *)isl_id_get_user(Id);
-  auto *NewAccesses = createNewAccesses(Stmt, User);
+  ScopStmt *Stmt = (ScopStmt *)StmtExpr.id().user();
+  auto *NewAccesses = createNewAccesses(Stmt, User.get());
   if (Stmt->isCopyStmt()) {
     generateCopyStmt(Stmt, NewAccesses);
-    isl_ast_expr_free(Expr);
   } else {
-    createSubstitutions(isl::manage(Expr), Stmt, LTS);
+    createSubstitutions(Expr, Stmt, LTS);
 
     if (Stmt->isBlockStmt())
       BlockGen.copyStmt(*Stmt, LTS, NewAccesses);
@@ -1011,8 +1006,6 @@ void IslNodeBuilder::createUser(__isl_take isl_ast_node *User) {
   }
 
   isl_id_to_ast_expr_free(NewAccesses);
-  isl_ast_node_free(User);
-  isl_id_free(Id);
 }
 
 void IslNodeBuilder::createBlock(__isl_take isl_ast_node *Block) {
@@ -1039,7 +1032,7 @@ void IslNodeBuilder::create(__isl_take isl_ast_node *Node) {
     createIf(Node);
     return;
   case isl_ast_node_user:
-    createUser(Node);
+    createUser(isl::manage(Node).as<isl::ast_node_user>());
     return;
   case isl_ast_node_block:
     createBlock(Node);
