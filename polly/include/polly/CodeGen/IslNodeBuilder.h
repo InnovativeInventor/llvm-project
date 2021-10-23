@@ -375,8 +375,7 @@ protected:
                                  std::vector<Value *> &IVS,
                                  __isl_take isl_id *IteratorID);
   virtual void createIf(__isl_take isl_ast_node *If);
-  void createUserVector(__isl_take isl_ast_node *User,
-                        std::vector<Value *> &IVS,
+  void createUserVector(isl::ast_node_user User, std::vector<Value *> &IVS,
                         __isl_take isl_id *IteratorID,
                         __isl_take isl_union_map *Schedule);
   virtual void createUser(__isl_take isl_ast_node *User);

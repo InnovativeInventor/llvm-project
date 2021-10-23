@@ -392,28 +392,24 @@ Value *IslNodeBuilder::getLatestValue(Value *Original) const {
   return It->second;
 }
 
-void IslNodeBuilder::createUserVector(__isl_take isl_ast_node *User,
+void IslNodeBuilder::createUserVector(isl::ast_node_user User,
                                       std::vector<Value *> &IVS,
                                       __isl_take isl_id *IteratorID,
                                       __isl_take isl_union_map *Schedule) {
-  isl_ast_expr *Expr = isl_ast_node_user_get_expr(User);
-  isl_ast_expr *StmtExpr = isl_ast_expr_get_op_arg(Expr, 0);
-  isl_id *Id = isl_ast_expr_get_id(StmtExpr);
-  isl_ast_expr_free(StmtExpr);
-  ScopStmt *Stmt = (ScopStmt *)isl_id_get_user(Id);
+  isl::ast_expr Expr = User.expr();
+  isl::ast_expr StmtExpr = Expr.op_arg(0);
+  ScopStmt *Stmt = (ScopStmt *)StmtExpr.id().user();
   std::vector<LoopToScevMapT> VLTS(IVS.size());
 
   isl_union_set *Domain = isl_union_set_from_set(Stmt->getDomain().release());
   Schedule = isl_union_map_intersect_domain(Schedule, Domain);
   isl_map *S = isl_map_from_union_map(Schedule);
 
-  auto *NewAccesses = createNewAccesses(Stmt, User);
-  createSubstitutionsVector(isl::manage(Expr), Stmt, VLTS, IVS, IteratorID);
+  auto *NewAccesses = createNewAccesses(Stmt, User.get());
+  createSubstitutionsVector(Expr, Stmt, VLTS, IVS, IteratorID);
   VectorBlockGenerator::generate(BlockGen, *Stmt, VLTS, S, NewAccesses);
   isl_id_to_ast_expr_free(NewAccesses);
   isl_map_free(S);
-  isl_id_free(Id);
-  isl_ast_node_free(User);
 }
 
 void IslNodeBuilder::createMark(__isl_take isl_ast_node *Node) {
@@ -492,14 +488,16 @@ void IslNodeBuilder::createForVector(__isl_take isl_ast_node *For,
 
   switch (isl_ast_node_get_type(Body)) {
   case isl_ast_node_user:
-    createUserVector(Body, IVS, isl_id_copy(IteratorID), Schedule.copy());
+    createUserVector(isl::manage(Body).as<isl::ast_node_user>(), IVS,
+                     isl_id_copy(IteratorID), Schedule.copy());
     break;
   case isl_ast_node_block: {
     isl_ast_node_list *List = isl_ast_node_block_get_children(Body);
 
     for (int i = 0; i < isl_ast_node_list_n_ast_node(List); ++i)
-      createUserVector(isl_ast_node_list_get_ast_node(List, i), IVS,
-                       isl_id_copy(IteratorID), Schedule.copy());
+      createUserVector(isl::manage(isl_ast_node_list_get_ast_node(List, i))
+                           .as<isl::ast_node_user>(),
+                       IVS, isl_id_copy(IteratorID), Schedule.copy());
 
     isl_ast_node_free(Body);
     isl_ast_node_list_free(List);
